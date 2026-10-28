@@ -1,3 +1,7 @@
+> This branch contains the Windows IL2CPP compatibility changes documented in
+> [COMPATIBILITY.md](COMPATIBILITY.md). Use `build-msvc.ps1 -Release` to build with
+> existing Visual Studio tools without installing a compiler or xmake.
+
 <p align="center">
   <img height="256" width="256" src="assets/img/icon.png">
 </p>

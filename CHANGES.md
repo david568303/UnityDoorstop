@@ -1,3 +1,24 @@
+# Compatibility changes, 2026-10-28
+
+This fork is based on NeighTools/UnityDoorstop commit
+`1c3ece1f1e6c20f4aa74d5402baabf8a0098d282`. The upstream GNU LGPL 2.1
+license and notices are retained.
+
+- Add validated canonical IL2CPP export aliases and refresh missing or stale maps
+  using a configured external helper, outside the Windows loader lock.
+- Recognize a mapped `il2cpp_init` export and resolve the supporting native APIs
+  before installing the initialization hook.
+- Apply the same resolver to CoreCLR imports for managed P/Invoke and
+  `NativeLibrary.GetExport`.
+- Add a Windows x64 build script using existing Visual Studio C++ tools and
+  MASM; it does not download or install a compiler or build system.
+
+Only the final compatibility implementation is included. Debug-symbol/PDB
+resolvers and abandoned experimental implementations are not part of this fork.
+See [COMPATIBILITY.md](COMPATIBILITY.md) for setup, scope, and build instructions.
+
+---
+
 # Breaking changes from UnityDoorstop 3.x
 
 This version of Doorstop is almost a complete rewrite of previous versions.

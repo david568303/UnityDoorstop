@@ -1,3 +1,8 @@
+/*
+ * IL2CPP compatibility changes by David Salas Kalendar, 2026-10-28.
+ * Based on UnityDoorstop; distributed under the GNU LGPL 2.1 (see LICENSE).
+ * See COMPATIBILITY.md and CHANGES.md for the changes and upstream revision.
+ */
 #include "bootstrap.h"
 #include "config/config.h"
 #include "crt.h"
