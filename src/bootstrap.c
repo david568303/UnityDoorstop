@@ -7,6 +7,10 @@
 #include "util/logging.h"
 #include "util/paths.h"
 #include "util/util.h"
+#if _WIN32
+#include "windows/hook.h"
+#include "windows/il2cpp_resolver.h"
+#endif
 
 bool_t mono_debug_init_called = FALSE;
 bool_t mono_is_net35 = FALSE;
@@ -267,6 +271,17 @@ void il2cpp_doorstop_bootstrap() {
         LOG("Failed to load CoreCLR runtime!");
         return;
     }
+
+#if _WIN32
+    /* Managed P/Invoke and NativeLibrary.GetExport also need canonical API
+       aliases. Scope the hook to CoreCLR; preserve its ordinary lookups. */
+    if (iat_hook(coreclr_module, "kernel32.dll", &GetProcAddress,
+                 &doorstop_get_proc_address)) {
+        LOG("Installed CoreCLR IL2CPP export resolver");
+    } else {
+        LOG("CoreCLR export hook unavailable; managed canonical API lookup may fail");
+    }
+#endif
 
     load_coreclr_funcs(coreclr_module);
 
