@@ -1,4 +1,5 @@
 #include "wincrt.h"
+#include "il2cpp_resolver.h"
 
 static HANDLE h_heap;
 
@@ -22,7 +23,7 @@ void *memcpy(void *dst, const void *src, size_t n) {
 }
 
 void *dlsym(void *handle, const char *name) {
-    return GetProcAddress((HMODULE)handle, name);
+    return doorstop_resolve_export((HMODULE)handle, name);
 }
 
 void *dlopen(const char_t *filename, int flag) { return LoadLibrary(filename); }

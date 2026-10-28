@@ -5,6 +5,8 @@
 #include "../util/logging.h"
 #include "../util/paths.h"
 #include "hook.h"
+#include "il2cpp_resolver.h"
+#include "../runtimes/il2cpp.h"
 #include "proxy/proxy.h"
 
 /**
@@ -140,6 +142,25 @@ void capture_mono_path(void *handle) {
 
 bool_t initialized = FALSE;
 void *WINAPI get_proc_address_detour(void *module, char *name) {
+    char init_alias[256];
+    if (HIWORD(name)) doorstop_prepare_api_map(module);
+    /* Unity may request a renamed export. Resolve identity from a validated,
+       automatically generated map before applying the normal init hook. */
+    if (HIWORD(name) &&
+        (lstrcmpA(name, "il2cpp_init") == 0 ||
+         (doorstop_export_alias(module, "il2cpp_init", init_alias, sizeof(init_alias)) &&
+          lstrcmpA(name, init_alias) == 0))) {
+        if (!initialized) {
+            load_il2cpp_funcs(module);
+            if (!il2cpp.init || !il2cpp.runtime_invoke || !il2cpp.method_get_name) {
+                LOG("IL2CPP API resolution failed; leaving original init unchanged");
+                return (void *)GetProcAddress(module, name);
+            }
+            initialized = TRUE;
+            LOG("Resolved IL2CPP initialization and supporting APIs");
+        }
+        return (void *)init_il2cpp;
+    }
     // If the lpProcName pointer contains an ordinal rather than a string,
     // high-word value of the pointer is zero (see PR #66)
 #define REDIRECT_INIT(init_name, init_func, target, extra_init)                \
@@ -154,7 +175,6 @@ void *WINAPI get_proc_address_detour(void *module, char *name) {
         return (void *)(target);                                               \
     }
 
-    REDIRECT_INIT("il2cpp_init", load_il2cpp_funcs, init_il2cpp, {});
     REDIRECT_INIT("mono_jit_init_version", load_mono_funcs, init_mono,
                   capture_mono_path(module));
     REDIRECT_INIT("mono_image_open_from_data_with_name", load_mono_funcs,
