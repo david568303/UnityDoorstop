@@ -6,11 +6,14 @@
 #include "wincrt.h"
 #include "il2cpp_resolver.h"
 
+/* Standard-CRT ownership separation and Win32 result types updated 2026-11-07. */
 static HANDLE h_heap;
 
 void init_crt() { h_heap = GetProcessHeap(); }
 
+#if !defined(DOORSTOP_STANDARD_CRT)
 #pragma function(memset)
+#endif
 void *memset(void *dst, int c, size_t n) {
     char *d = dst;
     while (n--)
@@ -18,7 +21,9 @@ void *memset(void *dst, int c, size_t n) {
     return dst;
 }
 
+#if !defined(DOORSTOP_STANDARD_CRT)
 #pragma function(memcpy)
+#endif
 void *memcpy(void *dst, const void *src, size_t n) {
     char *d = dst;
     const char *s = src;
@@ -98,12 +103,12 @@ void *fopen(char_t *filename, const char_t *mode) {
 }
 
 size_t fread(void *ptr, size_t size, size_t count, void *stream) {
-    size_t read_size = 0;
-    ReadFile(stream, ptr, size * count, &read_size, NULL);
+    DWORD read_size = 0;
+    ReadFile(stream, ptr, (DWORD)(size * count), &read_size, NULL);
     return read_size;
 }
 
-int fclose(void *stream) { CloseHandle(stream); }
+int fclose(void *stream) { return CloseHandle(stream) ? 0 : -1; }
 
 #ifndef UNICODE
 LPSTR *CommandLineToArgvA(LPCSTR cmd_line, int *argc) {

@@ -54,13 +54,20 @@ logging. Generated C, assembly, object files, and the export definition remain
 under the ignored `build` directory. This custom build path is Windows x64 only.
 The original upstream xmake build files are retained separately.
 
+The maintained script uses normal static MSVC runtime startup and `/GS` stack
+protection. `DOORSTOP_STANDARD_CRT` keeps Doorstop's custom allocation and file
+functions separate from the standard runtime's internal functions. This mode
+does not require users to install Visual Studio or a redistributable runtime.
+Version resources identify the fork; the release build does not need an external
+PDB. A `-BuildRoot` argument can select another development output directory.
+
 To rebuild the integration package, use its documented build scripts and point
 its native source input at this fork. The native DLL alone does not supply the
 API discovery helper, metadata bootstrap, BepInEx, Python, or CoreCLR.
 
 ## License and distribution
 
-The six modified or added native C/header files carry dated modification
+Modified or added native C/header files carry dated modification
 notices. [CHANGES.md](CHANGES.md) lists the changes. Preserve the original license
 and copyright notices and provide the corresponding modified source when
 redistributing the native binary under the applicable LGPL terms. This fork

@@ -1,4 +1,20 @@
-# Compatibility changes, 2026-10-28
+# Compatibility changes, updated 2026-11-07
+
+## MSVC startup and runtime support, 2026-11-07
+
+- Use the normal static MSVC runtime entry point with stack-cookie protection in
+  the maintained Windows build. The startup bridge delegates to the existing
+  `DllEntry`; API discovery, hooks and managed initialization remain intact.
+- Namespace the custom heap, memory and file routines in this build so they do
+  not replace the standard runtime's allocator or file operations. The original
+  freestanding path remains available to the other build configurations.
+- Correct the Win32 `ReadFile` byte-count output type and define the file-close
+  return value.
+- Compile the upstream version-resource template with accurate fork metadata,
+  image checksums, ASLR, high-entropy addressing and non-executable data enabled.
+  The release DLL needs no separate Visual C++ runtime installation or PDB.
+
+## Original compatibility implementation, 2026-10-28
 
 This fork is based on NeighTools/UnityDoorstop commit
 `1c3ece1f1e6c20f4aa74d5402baabf8a0098d282`. The upstream GNU LGPL 2.1

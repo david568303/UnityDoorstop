@@ -9,6 +9,25 @@
 #include "../util/util.h"
 #include <windows.h>
 
+#if defined(_MSC_VER) && defined(DOORSTOP_STANDARD_CRT)
+/* Static MSVC runtime startup support, 2026-11-07 (LGPL 2.1).
+ * Keep Doorstop's custom heap/file routines private to this implementation.
+ * They must never interpose on the standard runtime's own allocator or FILEs.
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#define memset doorstop_memset
+#define memcpy doorstop_memcpy
+#define malloc doorstop_malloc
+#define calloc doorstop_calloc
+#define free doorstop_free
+#define setenv doorstop_setenv
+#define fopen doorstop_fopen
+#define fread doorstop_fread
+#define fclose doorstop_fclose
+#endif
+
 // Fix for MinGW's headers
 #if UNICODE
 #define GetFinalPathNameByHandle GetFinalPathNameByHandleW
@@ -21,10 +40,14 @@ extern void init_crt();
 #define STR_LEN(str) (sizeof(str) / sizeof((str)[0]))
 
 extern void *memset(void *dst, int c, size_t n);
+#if !defined(DOORSTOP_STANDARD_CRT)
 #pragma intrinsic(memset)
+#endif
 
 extern void *memcpy(void *dst, const void *src, size_t n);
+#if !defined(DOORSTOP_STANDARD_CRT)
 #pragma intrinsic(memcpy)
+#endif
 
 extern size_t strlen_wide(const char_t *str);
 #define strlen strlen_wide
