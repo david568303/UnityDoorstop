@@ -11,6 +11,7 @@
 #include <wchar.h>
 
 static INIT_ONCE preparation = INIT_ONCE_STATIC_INIT;
+static volatile LONG preparation_owner;
 static PVOID volatile prepared_module;
 static NativeApiMap prepared_map;
 
@@ -96,7 +97,8 @@ static BOOL CALLBACK prepare_once(PINIT_ONCE once, PVOID parameter, PVOID *conte
     (void)context;
     HMODULE game = NULL, unity = NULL;
     WCHAR directory[MAX_PATH], path[MAX_PATH], option[8];
-    if (!GetModuleHandleExW(0, L"UnityPlayer.dll", &unity)) return TRUE;
+    InterlockedExchange(&preparation_owner, (LONG)GetCurrentThreadId());
+    if (!GetModuleHandleExW(0, L"UnityPlayer.dll", &unity)) goto done;
     if (!game_directory(unity, directory) || !append_path(path, directory, L"doorstop_config.ini"))
         goto done;
     GetPrivateProfileStringW(L"Compatibility", L"auto_refresh", L"true", option,
@@ -120,7 +122,8 @@ static BOOL CALLBACK prepare_once(PINIT_ONCE once, PVOID parameter, PVOID *conte
     log_refresh(directory, failure, GetTickCount64() - start);
 done:
     if (game) FreeLibrary(game);
-    FreeLibrary(unity);
+    if (unity) FreeLibrary(unity);
+    InterlockedExchange(&preparation_owner, 0);
     return TRUE;
 }
 #endif
@@ -128,7 +131,8 @@ done:
 void doorstop_prepare_api_map(HMODULE module) {
 #ifdef DOORSTOP_NATIVE_API
     if (module && module == GetModuleHandleW(L"GameAssembly.dll") &&
-        !GetProcAddress(module, "il2cpp_init"))
+        !GetProcAddress(module, "il2cpp_init") &&
+        (DWORD)InterlockedCompareExchange(&preparation_owner, 0, 0) != GetCurrentThreadId())
         InitOnceExecuteOnce(&preparation, prepare_once, module, NULL);
 #else
     (void)module;
@@ -137,7 +141,7 @@ void doorstop_prepare_api_map(HMODULE module) {
 
 const NativeApiBinding *doorstop_find_native_api(HMODULE module, const char *canonical) {
 #ifdef DOORSTOP_NATIVE_API
-    if (!module || !canonical || !HIWORD(canonical) ||
+    if (!module || !canonical || IS_INTRESOURCE(canonical) ||
         module != InterlockedCompareExchangePointer(&prepared_module, NULL, NULL)) return NULL;
     for (size_t i = 0; i < prepared_map.count; ++i) {
         const NativeApiBinding *binding = &prepared_map.entries[i];

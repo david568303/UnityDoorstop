@@ -145,38 +145,61 @@ void capture_mono_path(void *handle) {
     setenv(TEXT("DOORSTOP_MONO_LIB_PATH"), result, TRUE);
 }
 
-bool_t initialized = FALSE;
+static SRWLOCK runtime_binding_lock = SRWLOCK_INIT;
+static volatile LONG runtime_binding_owner;
+static bool_t il2cpp_initialized, mono_initialized;
+
+/* Serialize publication of the runtime function tables. A recursive lookup
+   from the binding thread uses the original export while binding is in flight. */
+static bool_t begin_runtime_binding(void) {
+    DWORD thread = GetCurrentThreadId();
+    if ((DWORD)InterlockedCompareExchange(&runtime_binding_owner, 0, 0) == thread)
+        return FALSE;
+    AcquireSRWLockExclusive(&runtime_binding_lock);
+    InterlockedExchange(&runtime_binding_owner, (LONG)thread);
+    return TRUE;
+}
+
+static void end_runtime_binding(void) {
+    InterlockedExchange(&runtime_binding_owner, 0);
+    ReleaseSRWLockExclusive(&runtime_binding_lock);
+}
+
 void *WINAPI get_proc_address_detour(void *module, char *name) {
     char init_alias[256];
-    if (HIWORD(name)) doorstop_prepare_api_map(module);
+    bool_t named = name && !IS_INTRESOURCE(name);
+    if (named) doorstop_prepare_api_map(module);
     /* Unity may request a renamed export. Use the validated native binder
        result before applying the normal init hook. */
-    if (HIWORD(name) &&
+    if (named &&
         (lstrcmpA(name, "il2cpp_init") == 0 ||
          (doorstop_export_alias(module, "il2cpp_init", init_alias, sizeof(init_alias)) &&
           lstrcmpA(name, init_alias) == 0))) {
-        if (!initialized) {
+        if (!begin_runtime_binding()) return (void *)GetProcAddress(module, name);
+        if (!il2cpp_initialized) {
             load_il2cpp_funcs(module);
-            if (!il2cpp.init || !il2cpp.runtime_invoke || !il2cpp.method_get_name) {
-                LOG("IL2CPP API resolution failed; leaving original init unchanged");
-                return (void *)GetProcAddress(module, name);
-            }
-            initialized = TRUE;
-            LOG("Resolved IL2CPP initialization and supporting APIs");
+            il2cpp_initialized = il2cpp.init && il2cpp.runtime_invoke && il2cpp.method_get_name;
+            if (il2cpp_initialized) LOG("Resolved IL2CPP initialization and supporting APIs");
+        }
+        bool_t ready = il2cpp_initialized;
+        end_runtime_binding();
+        if (!ready) {
+            LOG("IL2CPP API resolution failed; leaving original init unchanged");
+            return (void *)GetProcAddress(module, name);
         }
         return (void *)init_il2cpp;
     }
-    // If the lpProcName pointer contains an ordinal rather than a string,
-    // high-word value of the pointer is zero (see PR #66)
 #define REDIRECT_INIT(init_name, init_func, target, extra_init)                \
-    if (HIWORD(name) && lstrcmpA(name, init_name) == 0) {                      \
-        if (!initialized) {                                                    \
-            initialized = TRUE;                                                \
+    if (named && lstrcmpA(name, init_name) == 0) {                             \
+        if (!begin_runtime_binding()) return (void *)GetProcAddress(module, name); \
+        if (!mono_initialized) {                                               \
             LOG("Got %S at %p", init_name, module);                            \
             extra_init;                                                        \
             init_func(module);                                                 \
+            mono_initialized = TRUE;                                               \
             LOG("Loaded all runtime functions\n")                              \
         }                                                                      \
+        end_runtime_binding();                                                \
         return (void *)(target);                                               \
     }
 

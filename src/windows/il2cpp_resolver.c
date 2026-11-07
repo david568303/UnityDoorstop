@@ -19,7 +19,7 @@ BOOL doorstop_export_alias(HMODULE module, const char *canonical,
 FARPROC doorstop_resolve_export(HMODULE module, const char *canonical) {
     if (!module || !canonical) return NULL;
     FARPROC address = GetProcAddress(module, canonical);
-    if (address || !HIWORD(canonical)) return address;
+    if (address || IS_INTRESOURCE(canonical)) return address;
     const NativeApiBinding *binding = doorstop_find_native_api(module, canonical);
     return binding ? binding->address : NULL;
 }

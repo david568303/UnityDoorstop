@@ -8,6 +8,9 @@
 - Retain verified aliases for Doorstop and CoreCLR, publish the managed
   bootstrap's INI atomically, and record diagnostics for each discovery run.
 - Preserve the normal lookup path for canonical exports and ordinals.
+- Distinguish Windows ordinals from full-width x64 name pointers and serialize
+  runtime function publication. Recursive lookups on the binding thread use
+  the original export.
 
 ## MSVC startup and runtime support, 2026-11-07
 
