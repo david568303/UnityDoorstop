@@ -1,5 +1,14 @@
 # Compatibility changes, updated 2026-11-07
 
+## In-process IL2CPP discovery, 2026-11-07
+
+- Resolve renamed IL2CPP APIs directly from the loaded Windows x64 PE images
+  using native Capstone decoding, public Unity SDK declaration profiles, and
+  distributed ABI validation.
+- Retain verified aliases for Doorstop and CoreCLR, publish the managed
+  bootstrap's INI atomically, and record diagnostics for each discovery run.
+- Preserve the normal lookup path for canonical exports and ordinals.
+
 ## MSVC startup and runtime support, 2026-11-07
 
 - Use the normal static MSVC runtime entry point with stack-cookie protection in

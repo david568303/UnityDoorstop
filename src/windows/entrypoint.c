@@ -149,8 +149,8 @@ bool_t initialized = FALSE;
 void *WINAPI get_proc_address_detour(void *module, char *name) {
     char init_alias[256];
     if (HIWORD(name)) doorstop_prepare_api_map(module);
-    /* Unity may request a renamed export. Resolve identity from a validated,
-       automatically generated map before applying the normal init hook. */
+    /* Unity may request a renamed export. Use the validated native binder
+       result before applying the normal init hook. */
     if (HIWORD(name) &&
         (lstrcmpA(name, "il2cpp_init") == 0 ||
          (doorstop_export_alias(module, "il2cpp_init", init_alias, sizeof(init_alias)) &&

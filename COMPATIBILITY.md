@@ -7,26 +7,25 @@ The compatibility changes are maintained by David Salas Kalendar, dated
 
 ## Behavior
 
-The Windows loader can resolve renamed IL2CPP exports using a canonical API map
-produced from the paired `UnityPlayer.dll` and `GameAssembly.dll` binaries. It
-validates the map format, discovery method, PE image identity, export name, and
-export RVA before using an alias. It applies those aliases to Doorstop's native
-lookups and CoreCLR imports. The original Windows export lookup remains the
-first choice.
+The Windows loader finds the IL2CPP export binder in the loaded x64
+`UnityPlayer.dll`, checks its unwind ranges and shared `GetProcAddress`
+resolver, and pairs its ordered bindings with public Unity SDK declarations.
+Distributed instruction checks verify the native ABI before any alias is
+activated. The original Windows export lookup remains the first choice.
 
-When the map is absent or stale and refresh is enabled, Doorstop starts the
-configured Python helper from Unity's API-binding path, after GameAssembly has
-loaded. It never starts that helper from `DllEntry`. The helper process has a
-90-second wait limit. The helper and its dependencies are supplied by the
-separate compatibility integration package, not by this native repository.
+Discovery runs once per process from Unity's API-binding path after
+`GameAssembly.dll` loads. It reads the mapped PE images and loads Capstone 5
+from the integration package at `BepInEx/compatibility/capstone.dll`. Doorstop
+retains the validated aliases in memory for native lookups and CoreCLR imports.
+It atomically writes `doorstop_api.ini` for the managed bootstrap and records
+the result in `BepInEx/cache/compatibility/api-refresh.log`. Each launch
+derives fresh aliases from the loaded images, independent of existing INIs.
 
 Example integration configuration, relative to the game directory:
 
 ```ini
 [Compatibility]
 auto_refresh=true
-helper_script=BepInEx\compatibility\tools\prepare_api_map.py
-python_executable=BepInEx\compatibility\python\python.exe
 ```
 
 No game binaries, precomputed game API maps, game metadata, symbol files, or
@@ -39,7 +38,7 @@ still require changes to the discovery or normalization implementation.
 From the repository root in PowerShell on Windows:
 
 ```powershell
-.\build-msvc.ps1 -Release
+.\build-msvc.ps1 -Release -CapstoneIncludeDir C:\path\to\capstone\include
 ```
 
 Prerequisites are an existing Visual Studio installation with the x64 C++ build
@@ -52,7 +51,10 @@ Outputs are `build/msvc-x64/winhttp.dll` and
 `build/msvc-x64/.doorstop_version`. Omit `-Release` to enable verbose native
 logging. Generated C, assembly, object files, and the export definition remain
 under the ignored `build` directory. This custom build path is Windows x64 only.
-The original upstream xmake build files are retained separately.
+The Capstone include directory must contain `capstone/capstone.h` from the
+pinned decoder source. Omitting it builds the ordinary export path without
+renamed API discovery. The original upstream xmake build files are retained
+separately.
 
 The maintained script uses normal static MSVC runtime startup and `/GS` stack
 protection. `DOORSTOP_STANDARD_CRT` keeps Doorstop's custom allocation and file
@@ -62,8 +64,8 @@ Version resources identify the fork; the release build does not need an external
 PDB. A `-BuildRoot` argument can select another development output directory.
 
 To rebuild the integration package, use its documented build scripts and point
-its native source input at this fork. The native DLL alone does not supply the
-API discovery helper, metadata bootstrap, BepInEx, Python, or CoreCLR.
+its native source input at this fork. The package provides Capstone, the
+metadata bootstrap, BepInEx, and CoreCLR.
 
 ## License and distribution
 

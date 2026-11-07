@@ -1,6 +1,6 @@
 # Standard MSVC startup, stack protection and version resources, 2026-11-07.
 # GNU LGPL 2.1; see LICENSE. Existing compiler tools are used without installation.
-param([switch]$Release, [string]$BuildRoot)
+param([switch]$Release, [string]$BuildRoot, [string]$CapstoneIncludeDir)
 $SourceRoot = $PSScriptRoot
 if (-not $BuildRoot) { $BuildRoot = Join-Path $SourceRoot 'build/msvc-x64' }
 $ErrorActionPreference = 'Stop'
@@ -66,6 +66,13 @@ try {
     # Preserve loader code generation; use standard static CRT startup and /GS.
     # Custom heap/file routines are namespaced, keeping allocation ownership unchanged.
     $compileArgs = @('/nologo','/c','/O1','/Ob2','/GS','/MT','/GL-','/DUNICODE','/D_UNICODE','/DDOORSTOP_STANDARD_CRT','/W3')
+    if ($CapstoneIncludeDir) {
+        $CapstoneIncludeDir = (Resolve-Path -LiteralPath $CapstoneIncludeDir).Path
+        if (-not (Test-Path -LiteralPath (Join-Path $CapstoneIncludeDir 'capstone/capstone.h') -PathType Leaf)) {
+            throw 'CapstoneIncludeDir must contain the pinned Capstone 5 C headers.'
+        }
+        $compileArgs += @('/DDOORSTOP_NATIVE_API', ('/I' + $CapstoneIncludeDir))
+    }
     if (-not $Release) { $compileArgs += '/DVERBOSE=1' }
     & cl.exe @compileArgs @sources 'proxy.c'
     if ($LASTEXITCODE -ne 0) { throw 'Native source compilation failed.' }
