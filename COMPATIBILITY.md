@@ -15,10 +15,10 @@ activated. The original Windows export lookup remains the first choice.
 
 Discovery runs once per process from Unity's API-binding path after
 `GameAssembly.dll` loads. It reads the mapped PE images and loads Capstone 5
-from the integration package at `BepInEx/compatibility/capstone.dll`. Doorstop
+from the integration package at `BepInEx/core/CarX.Capstone.dll`. Doorstop
 retains the validated aliases in memory for native lookups and CoreCLR imports.
 It atomically writes `doorstop_api.ini` for the managed bootstrap and records
-the result in `BepInEx/cache/compatibility/api-refresh.log`. Each launch
+the result in `BepInEx/api-refresh.log`. Each launch
 derives fresh aliases from the loaded images, independent of existing INIs.
 
 Example integration configuration, relative to the game directory:

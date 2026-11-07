@@ -65,15 +65,10 @@ static BOOL publish_map(const WCHAR *directory, const NativeApiMap *map) {
 }
 
 static void log_refresh(const WCHAR *directory, const char *failure, ULONGLONG elapsed) {
-    static const WCHAR *const folders[] = {
-        L"BepInEx", L"BepInEx\\cache", L"BepInEx\\cache\\compatibility"
-    };
     WCHAR path[MAX_PATH];
-    for (size_t i = 0; i < ARRAYSIZE(folders); ++i) {
-        if (!append_path(path, directory, folders[i])) return;
-        if (!CreateDirectoryW(path, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) return;
-    }
-    if (!append_path(path, directory, L"BepInEx\\cache\\compatibility\\api-refresh.log")) return;
+    if (!append_path(path, directory, L"BepInEx") ||
+        (!CreateDirectoryW(path, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) ||
+        !append_path(path, directory, L"BepInEx\\api-refresh.log")) return;
     HANDLE file = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE, NULL,
                               CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (file == INVALID_HANDLE_VALUE) return;
@@ -109,7 +104,7 @@ static BOOL CALLBACK prepare_once(PINIT_ONCE once, PVOID parameter, PVOID *conte
     const char *failure = NULL;
     if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, (LPCWSTR)parameter, &game)) {
         failure = "could not retain the loaded GameAssembly module";
-    } else if (!append_path(path, directory, L"BepInEx\\compatibility\\capstone.dll")) {
+    } else if (!append_path(path, directory, L"BepInEx\\core\\CarX.Capstone.dll")) {
         failure = "the packaged decoder path is too long";
     } else if (doorstop_discover_native_apis(unity, game, path, &prepared_map, &failure)) {
         if (publish_map(directory, &prepared_map)) {
